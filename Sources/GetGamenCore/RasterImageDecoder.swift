@@ -136,8 +136,20 @@ public enum RasterImageDecoder {
 
     static func readFile(_ url: URL, limit: Int) throws -> Data {
         precondition(limit >= 0 && limit < Int.max)
-        let file = try FileHandle(forReadingFrom: url)
+        // A blocking open of a FIFO waits for a writer, so open without blocking and accept
+        // only regular files. O_NONBLOCK does not change how a regular file is read.
+        let descriptor = open(url.path, O_RDONLY | O_NONBLOCK | O_CLOEXEC)
+        guard descriptor >= 0 else {
+            // Let FileHandle report the failed open with its usual localized error.
+            _ = try FileHandle(forReadingFrom: url)
+            throw DecodingError.invalidData
+        }
+        let file = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         defer { try? file.close() }
+        var status = stat()
+        guard fstat(descriptor, &status) == 0, status.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG) else {
+            throw DecodingError.invalidData
+        }
         let data = try file.read(upToCount: limit + 1) ?? Data()
         guard data.count <= limit else { throw DecodingError.fileTooLarge }
         return data

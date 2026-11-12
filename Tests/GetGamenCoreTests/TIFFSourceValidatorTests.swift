@@ -39,10 +39,33 @@ final class TIFFSourceValidatorTests: XCTestCase {
         XCTAssertThrowsError(try TIFFSourceValidator.validateIfTIFF(data))
     }
 
-    private func fixture(big: Bool, little: Bool, tile: Bool = false, multiple: Bool = false) -> Data {
+    func testManyStripsValidateEveryPairInPlace() throws {
+        let strips = 1_000
+        var data = fixture(big: false, little: true, multiple: true, strips: strips)
+        XCTAssertNoThrow(try TIFFSourceValidator.validateIfTIFF(data))
+        // Only the last strip's length, stored just before the 4-byte strips, runs one byte past the end.
+        let lastLength = data.count - strips * 4 - 4
+        write(5, width: 4, into: &data, offset: lastLength, little: true)
+        XCTAssertThrowsError(try TIFFSourceValidator.validateIfTIFF(data))
+    }
+
+    func testDirectoriesSharingArraysCannotMultiplyWork() throws {
+        var data = fixture(big: false, little: true, multiple: true, strips: 1_000)
+        XCTAssertNoThrow(try TIFFSourceValidator.validateIfTIFF(data))
+        // A second directory pointing at the same arrays declares more array bytes than the file holds.
+        let table = 8 + 2, next = table + 12 * 2
+        let entries = data[table..<next]
+        write(UInt64(data.count), width: 4, into: &data, offset: next, little: true)
+        data.append(data[8..<table])
+        data.append(entries)
+        data.append(contentsOf: [0, 0, 0, 0])
+        XCTAssertThrowsError(try TIFFSourceValidator.validateIfTIFF(data))
+    }
+
+    private func fixture(big: Bool, little: Bool, tile: Bool = false, multiple: Bool = false, strips: Int = 2) -> Data {
         let word = big ? 8 : 4, entry = big ? 20 : 12, header = big ? 16 : 8, countWidth = big ? 8 : 2
         let arrayStart = header + countWidth + entry * 2 + word
-        let count = multiple ? 2 : 1
+        let count = multiple ? strips : 1
         let pixelStart = arrayStart + (multiple ? count * word * 2 : 0)
         var bytes = Data(repeating: 0, count: pixelStart + count * 4)
         bytes[0] = little ? 0x49 : 0x4d; bytes[1] = bytes[0]

@@ -10,5 +10,5 @@ App/.build-number.lock
 # Claude Code / VibesDeGoGo!
 .claude/.vdgg-*
 
-# VibesDeGoGo! review executor logs
-tasks/vdgg/*/review/*/log-*.txt
+# VibesDeGoGo! session notes stay local
+tasks/

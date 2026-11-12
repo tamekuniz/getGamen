@@ -50,14 +50,18 @@ enum TIFFSourceValidator {
             }
             var directory = try read(big ? 8 : 4, word)
             guard directory != 0 else { throw failure }
-            var seen = Set<UInt64>()
+            // Directories can loop, overlap tables or share arrays. Bounding the declared table and
+            // external array bytes by the file keeps the total work linear in its size.
+            var declaredBytes: UInt64 = 0
             while directory != 0 {
-                guard seen.insert(directory).inserted else { throw failure }
                 let count = try read(directory, countWidth)
                 let table = directory + UInt64(countWidth) // validated read proves this addition safe
                 let tableBytes = try product(count, entryWidth)
                 _ = try range(table, tableBytes)
-                var fields: [UInt64: [UInt64]] = [:]
+                declaredBytes += tableBytes
+                guard declaredBytes <= UInt64(bytes.count) else { throw failure }
+                // Where each external array lives; its elements are read in place so memory stays flat.
+                var fields: [UInt64: (start: UInt64, unit: UInt64, elements: UInt64)] = [:]
                 for index in 0..<count {
                     let entry = table + index * entryWidth
                     let tag = try read(entry, 2), type = try read(entry + 2, 2)
@@ -72,20 +76,27 @@ enum TIFFSourceValidator {
                     }
                     let length = try product(elements, unit)
                     let inline = entry + (big ? 12 : 8)
-                    let offset = try length > UInt64(word) ? read(inline, word) : inline
+                    let external = length > UInt64(word)
+                    let offset = try external ? read(inline, word) : inline
                     _ = try range(offset, length)
                     if [273, 279, 324, 325, 513, 514].contains(tag) {
                         guard fields[tag] == nil, [3, 4, 16].contains(type), elements > 0 else { throw failure }
-                        fields[tag] = try (0..<elements).map { try read(offset + $0 * unit, Int(unit)) }
+                        if external {
+                            declaredBytes += length
+                            guard declaredBytes <= UInt64(bytes.count) else { throw failure }
+                        }
+                        fields[tag] = (offset, unit, elements)
                     }
                 }
                 var hasRaster = false
                 for (offsetTag, countTag): (UInt64, UInt64) in [(273, 279), (324, 325), (513, 514)] {
                     if fields[offsetTag] != nil || fields[countTag] != nil {
                         guard let offsets = fields[offsetTag], let lengths = fields[countTag],
-                              offsets.count == lengths.count else { throw failure }
+                              offsets.elements == lengths.elements else { throw failure }
                         hasRaster = true
-                        for (offset, length) in zip(offsets, lengths) {
+                        for index in 0..<offsets.elements {
+                            let offset = try read(offsets.start + index * offsets.unit, Int(offsets.unit))
+                            let length = try read(lengths.start + index * lengths.unit, Int(lengths.unit))
                             guard offset > 0, length > 0 else { throw failure }
                             _ = try range(offset, length)
                         }

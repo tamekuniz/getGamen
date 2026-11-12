@@ -30,6 +30,8 @@ final class LicenseTests: XCTestCase {
         XCTAssertEqual(LicenseManager.computeState(record: record, now: start), .trial(daysRemaining: 7))
         XCTAssertEqual(LicenseManager.computeState(record: record, now: start + 7 * day - 1), .trial(daysRemaining: 1))
         XCTAssertEqual(LicenseManager.computeState(record: record, now: start + 7 * day), .free)
+        XCTAssertEqual(LicenseManager.computeState(record: record, now: start - day), .trial(daysRemaining: 7))
+        XCTAssertEqual(LicenseManager.computeState(record: record, now: start - day - 1), .free)
         XCTAssertFalse(LicenseState.free.allowsAutomation)
         XCTAssertTrue(LicenseState.trial(daysRemaining: 1).allowsAutomation)
     }

@@ -37,7 +37,7 @@ Claude Code や Codex などのエージェントには、getGamen を MCP サ�
 
 ## 入手する
 
-- 署名・公証済みの DMG は [GitHub Releases](https://github.com/tmknzz/getGamen/releases) からダウンロードできます。
+- 署名・公証済みの DMG は [GitHub Releases](https://github.com/tamekuniz/getGamen/releases) からダウンロードできます。
 - アプリでの撮影・編集は無料です。CLI と MCP は7日間試せて、その後は [Lemon Squeezy](https://tmknzz.lemonsqueezy.com/checkout/buy/2af738c0-6a22-457e-a868-06df153c2d27) のライセンスが必要です。価格は月$3、または1年間のアップデート付き買い切り$30 です。キーは設定の「ライセンス」に入力します。購入代金は開発の支えになります。
 - ソースからビルドすることもできます。Xcode が必要で、手順は [開発者向けの説明](docs/development.md) にあります。自分でビルドしたアプリは ad-hoc 署名になるため、ビルドし直すと画面収録の許可を求め直されることがあります。
 

@@ -281,6 +281,28 @@ final class RasterImageDecoderTests: XCTestCase {
         }
     }
 
+    func testFIFOAndDirectoryAreRejectedWithoutBlocking() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("getGamen-decoder-\(UUID())")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fifo = directory.appendingPathComponent("pipe")
+        XCTAssertEqual(mkfifo(fifo.path, 0o600), 0)
+        for url in [fifo, directory] {
+            let rejected = expectation(description: url.lastPathComponent)
+            // No writer ever opens the FIFO, so a blocking open would never return.
+            DispatchQueue.global().async {
+                let result = Result { try RasterImageDecoder.readFile(url, limit: 8) }
+                if case .failure(let error) = result {
+                    XCTAssertEqual(error as? RasterImageDecoder.DecodingError, .invalidData)
+                } else {
+                    XCTFail("\(url.lastPathComponent) was read")
+                }
+                rejected.fulfill()
+            }
+            wait(for: [rejected], timeout: 5)
+        }
+    }
+
     func testOversizedPNGHeaderIsRejectedBeforeDecompression() throws {
         let data = try Data(contentsOf: XCTUnwrap(Bundle.module.url(forResource: "oversized", withExtension: "png", subdirectory: "Fixtures")))
         let properties = try XCTUnwrap(CGImageSourceCopyPropertiesAtIndex(source(data), 0, nil) as NSDictionary?)

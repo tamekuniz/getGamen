@@ -142,8 +142,25 @@ public final class AutomationService {
         default: throw SchemaViolation(failure: AutomationFailure("unknown_tool", "Unknown operation: \(name)"))
         }
         let data = try RasterImageCodec.encode(image, format: format)
-        // O_EXCL semantics also reject symlinks and concurrent writers; never overwrite.
-        try data.write(to: output, options: .withoutOverwriting)
+        // O_EXCL rejects existing files, symlinks, and concurrent writers; never overwrite.
+        // 0600 keeps screenshots private even when written to a shared directory such as /tmp.
+        let fd = open(output.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+        guard fd >= 0 else {
+            let code = errno
+            if code == EEXIST {
+                throw AutomationFailure("output_exists", "Output already exists: \(output.path)")
+            }
+            throw POSIXError(POSIXErrorCode(rawValue: code) ?? .EIO)
+        }
+        let handle = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
+        do {
+            try handle.write(contentsOf: data)
+            try handle.close()
+        } catch {
+            // Do not leave a truncated image behind; it would also block a retry as output_exists.
+            unlink(output.path)
+            throw error
+        }
         return ["path": output.path, "width": image.width, "height": image.height, "bytes": data.count,
                 "format": a["format"] as? String ?? "png"]
     }

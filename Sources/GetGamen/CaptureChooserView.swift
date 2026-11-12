@@ -77,6 +77,22 @@ struct CaptureChooserView: View {
                 if runtime.failureNeedsReselection {
                     Button("範囲を選び直す") { perform(.captureRegion) }
                 }
+                if runtime.failureNeedsPermission {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(nsImage: NSApp.applicationIconImage)
+                                .resizable().frame(width: 32, height: 32)
+                                .onDrag { NSItemProvider(object: Bundle.main.bundleURL as NSURL) }
+                                .accessibilityLabel("getGamen")
+                            Text("「システム設定を開く」を押してから、左のgetGamenアイコンを「画面収録とシステムオーディオ録音」のリストへドラッグしてください。")
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Button("システム設定を開く") {
+                            NSWorkspace.shared.open(URL(string:
+                                "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                        }
+                    }
+                }
             }
 
         }

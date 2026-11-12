@@ -36,6 +36,7 @@ final class AppRuntime {
     @ObservationIgnored var activityDidChange: (@MainActor (CaptureActivity) -> Void)?
     private(set) var failureMessage: String?
     private(set) var failureNeedsReselection = false
+    private(set) var failureNeedsPermission = false
     private(set) var previousRecordWarning: String?
     private(set) var isTerminationPending = false
 
@@ -153,6 +154,7 @@ final class AppRuntime {
         active = operation
         failureMessage = nil
         failureNeedsReselection = false
+        failureNeedsPermission = false
         previousRecordWarning = nil
         activity = .selecting
 
@@ -253,7 +255,10 @@ final class AppRuntime {
             default: break
             }
         }
-        if error as? RegionCaptureError == .permissionRequired {
+        let regionPermission = error as? RegionCaptureError == .permissionRequired
+        failureNeedsPermission = regionPermission
+            || error as? WindowCaptureService.CaptureError == .permissionRequired
+        if regionPermission {
             failureMessage = "画面収録の許可が必要です。システム設定でgetGamenを許可してください。"
         } else {
             failureMessage = error.localizedDescription

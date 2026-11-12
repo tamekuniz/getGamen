@@ -323,10 +323,15 @@ final class CaptureChooserControllerTests: XCTestCase {
     func testPreviousFailureOffersReselectionAndPermissionFailureDoesNot() async throws {
         let errors: [Error] = [PreviousRegionError.missingPrevious, PreviousRegionError.corruptRecord,
                               PreviousRegionError.reselectionRequired(.topologyChanged),
-                              RegionCaptureError.permissionRequired]
+                              RegionCaptureError.permissionRequired,
+                              WindowCaptureService.CaptureError.permissionRequired]
         for error in errors {
             let fixture = try Fixture(); defer { fixture.remove() }
-            let runtime = fixture.runtime(prepare: { _, _, _ in throw error })
+            var attempts = 0
+            let runtime = fixture.runtime(prepare: { _, _, _ in
+                attempts += 1
+                throw attempts == 1 ? error : CancellationError()
+            })
             let controller = CaptureChooserController(runtime: runtime, defaults: fixture.defaults) { _ in }
             defer { controller.window.orderOut(nil) }
             try controller.start(.previous)
@@ -334,10 +339,16 @@ final class CaptureChooserControllerTests: XCTestCase {
             XCTAssertTrue(controller.window.isVisible)
             XCTAssertNotNil(runtime.failureMessage)
             XCTAssertEqual(runtime.failureNeedsReselection, error is PreviousRegionError)
+            XCTAssertEqual(runtime.failureNeedsPermission, !(error is PreviousRegionError))
             // The window must grow to the message's wrapped height instead of truncating it.
             let content = try XCTUnwrap(controller.window.contentView)
             content.layoutSubtreeIfNeeded()
             XCTAssertGreaterThanOrEqual(content.frame.height, content.fittingSize.height)
+            // The next attempt clears the permission shortcut even when it records no failure.
+            try controller.start(.previous)
+            await runtime.waitUntilIdle()
+            XCTAssertNil(runtime.failureMessage)
+            XCTAssertFalse(runtime.failureNeedsPermission)
         }
     }
 

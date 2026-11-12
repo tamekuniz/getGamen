@@ -42,13 +42,14 @@ For convenience in a shell session:
 
 ```sh
 GETGAMEN=/Applications/getGamen.app/Contents/MacOS/getGamen
+OUT="$HOME/Pictures/getGamen"; mkdir -p "$OUT"
 "$GETGAMEN" status
 "$GETGAMEN" windows
 "$GETGAMEN" displays
-"$GETGAMEN" capture-window --window-id 123 --output /tmp/window.png
-"$GETGAMEN" capture-region --x 0 --y 0 --width 800 --height 600 --output /tmp/region.png
-"$GETGAMEN" convert --input /tmp/window.png --output /tmp/window.jpg --format jpeg --quality 0.9
-"$GETGAMEN" edit --input /tmp/window.png --output /tmp/edited.png --edits '{"crop":{"x":0,"y":0,"width":200,"height":100},"objects":[{"type":"mask","bounds":{"x":10,"y":10,"width":50,"height":20}}]}'
+"$GETGAMEN" capture-window --window-id 123 --output "$OUT/window.png"
+"$GETGAMEN" capture-region --x 0 --y 0 --width 800 --height 600 --output "$OUT/region.png"
+"$GETGAMEN" convert --input "$OUT/window.png" --output "$OUT/window.jpg" --format jpeg --quality 0.9
+"$GETGAMEN" edit --input "$OUT/window.png" --output "$OUT/edited.png" --edits '{"crop":{"x":0,"y":0,"width":200,"height":100},"objects":[{"type":"mask","bounds":{"x":10,"y":10,"width":50,"height":20}}]}'
 "$GETGAMEN" tools
 ```
 

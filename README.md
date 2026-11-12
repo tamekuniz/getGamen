@@ -37,7 +37,7 @@ The command list, coordinate rules and Screen Recording permission details are i
 
 ## Get it
 
-- Download the signed and notarized DMG from [GitHub Releases](https://github.com/tmknzz/getGamen/releases).
+- Download the signed and notarized DMG from [GitHub Releases](https://github.com/tamekuniz/getGamen/releases).
 - Manual use in the app is free. The CLI and MCP server work for a 7-day trial, then need a license from [Lemon Squeezy](https://tmknzz.lemonsqueezy.com/checkout/buy/2af738c0-6a22-457e-a868-06df153c2d27): $3 a month, or $30 once with a year of updates. Enter the key in Settings > ライセンス (License). Purchases fund development.
 - Or build it from source. You need Xcode; see the [developer notes](docs/development.md) (Japanese). A build you make yourself is ad-hoc signed, so macOS may ask for Screen Recording permission again after each rebuild.
 

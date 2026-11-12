@@ -397,9 +397,18 @@ final class AutomationTests: XCTestCase {
         do { _ = try await service.execute("convert", arguments: ["input": input.path, "output": link.path]); XCTFail("Must not follow output symlink") }
         catch {}
         XCTAssertEqual(try Data(contentsOf: input), original)
+        // A dangling link passes the existence pre-check, so only the exclusive open stops it.
+        let target = root.appendingPathComponent("target.png")
+        let dangling = root.appendingPathComponent("dangling.png")
+        try FileManager.default.createSymbolicLink(at: dangling, withDestinationURL: target)
+        do { _ = try await service.execute("convert", arguments: ["input": input.path, "output": dangling.path]); XCTFail("Must not follow dangling output symlink") }
+        catch { XCTAssertEqual((error as? AutomationFailure)?.code, "output_exists") }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: target.path))
         let jpeg = root.appendingPathComponent("new.jpg")
         _ = try await service.execute("convert", arguments: ["input": input.path, "output": jpeg.path, "format": "jpeg", "quality": 0.7])
         XCTAssertEqual(Array(try Data(contentsOf: jpeg).prefix(2)), [0xff, 0xd8])
+        let mode = try FileManager.default.attributesOfItem(atPath: jpeg.path)[.posixPermissions] as? NSNumber
+        XCTAssertEqual(mode?.intValue, 0o600)
         let invalid = root.appendingPathComponent("invalid.png")
         do {
             _ = try await service.execute("edit", arguments: ["input": input.path, "output": invalid.path,

@@ -158,7 +158,9 @@ public final class LicenseManager {
             let graceEnd = validated.addingTimeInterval(Double(LicenseConfig.offlineGraceDays) * 86_400)
             return now <= graceEnd ? .licensed : .free
         }
-        let start = min(record.trialStartedAt ?? now, now)
+        // No recorded start, or one more than a day ahead, is tampering; within a day it is clock correction.
+        guard let recorded = record.trialStartedAt, recorded <= now.addingTimeInterval(86_400) else { return .free }
+        let start = min(recorded, now)
         let trialEnd = start.addingTimeInterval(Double(LicenseConfig.trialDays) * 86_400)
         guard now < trialEnd else { return .free }
         return .trial(daysRemaining: Int((trialEnd.timeIntervalSince(now) / 86_400).rounded(.up)))
